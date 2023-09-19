@@ -8,7 +8,7 @@ import urllib.request
 # urllib.request.urlretrieve(image_url, "test3.jpg")
 
 # Load the image
-image = cv2.imread('test2.jpg')
+image = cv2.imread('test4.jpg')
 
 # Convert the image to HSV
 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -31,46 +31,17 @@ orange_coords = np.column_stack(np.where(mask_orange))
 # Function to find and highlight the area where the blue line drops and does not touch the orange line
 def find_and_highlight_drop_area(blue_coords, orange_coords):
     if blue_coords.size > 0 and orange_coords.size > 0:
-        drop_start_x = None
-        drop_start_y = None
-        drop_lowest_x = None
-        drop_highest_x = None
-
         for x in range(image.shape[1]):
             blue_y_at_x = blue_coords[blue_coords[:, 1] == x][:, 0]
             orange_y_at_x = orange_coords[orange_coords[:, 1] == x][:, 0]
 
             if blue_y_at_x.size > 0 and orange_y_at_x.size > 0:
-                blue_y_max_at_x = np.max(blue_y_at_x)
                 blue_y_min_at_x = np.min(blue_y_at_x)
-                orange_y_min_at_x = np.min(orange_y_at_x)
+                orange_y_max_at_x = np.max(orange_y_at_x)
 
-                if drop_start_x is None and blue_y_max_at_x > orange_y_min_at_x:
-                    drop_start_x = blue_y_min_at_x
-                    drop_start_y = x
-                    drop_lowest_x = blue_y_max_at_x
-                    drop_highest_x = blue_y_min_at_x
-                elif drop_start_x is not None:
-                    drop_lowest_x = max(drop_lowest_x, blue_y_max_at_x)
-                    drop_highest_x = min(drop_highest_x, blue_y_min_at_x)
-                    if blue_y_max_at_x <= orange_y_min_at_x:
-                        y_max = x
-
-                        # Draw a rectangle to highlight the drop area
-                        cv2.rectangle(image, (drop_start_y, drop_highest_x), (y_max, drop_lowest_x), (0, 0, 255), 2)
-                        drop_start_x = None
-                        drop_start_y = None
-                        drop_lowest_x = None
-                        drop_highest_x = None
-
-        # If the blue line does not touch the orange line at the end of the image, highlight the last drop area
-        if drop_start_x is not None:
-            x_max = np.max(blue_coords[blue_coords[:, 1] >= drop_start_y][:, 0])
-            y_max = image.shape[1]
-
-            # Draw a rectangle to highlight the last drop area
-            cv2.rectangle(image, (drop_start_y, drop_highest_x), (y_max, x_max), (0, 0, 255), 2)
-
+                if blue_y_min_at_x - orange_y_max_at_x > 30:
+                    # Draw a rectangle to highlight the area
+                    cv2.rectangle(image, (x, orange_y_max_at_x), (x+1, blue_y_min_at_x), (0, 0, 255), 2)
 
 
 
@@ -83,3 +54,4 @@ plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 plt.title('Highlight Drop Areas')
 plt.axis('off')
 plt.show()
+
