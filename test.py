@@ -1,39 +1,55 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import urllib.request
+
+# Download the image
+image_url = "https://raw.githubusercontent.com/eddy1129/cmhk/master/test3.jpg"
+urllib.request.urlretrieve(image_url, "test3.jpg")
 
 # Load the image
 image = cv2.imread('test3.jpg')
 
-# Preprocess the image (convert to grayscale and apply Gaussian blur)
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+# Define the region of interest (ROI) for the right side of the image
+roi_x = image.shape[1] - 500  # Start from the last 500 pixels of the image
+roi_width = 500  # Width of the ROI
 
-# Apply Canny edge detection
-edges = cv2.Canny(blurred, threshold1=30, threshold2=100)
+# Crop the ROI from the image
+roi = image[:, roi_x:roi_x + roi_width]
 
-# Find contours in the edge-detected image
-contours, _ = cv2.findContours(edges.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+# Define color thresholds for blue and orange
+lower_blue = np.array([100, 0, 0], dtype=np.uint8)
+upper_blue = np.array([255, 100, 100], dtype=np.uint8)
 
-# Filter out small contours (noise)
-min_contour_area = 100
-significant_changes = []
+lower_orange = np.array([0, 50, 150], dtype=np.uint8)
+upper_orange = np.array([100, 150, 255], dtype=np.uint8)
 
-for contour in contours:
-    if cv2.contourArea(contour) > min_contour_area:
-        x, y, w, h = cv2.boundingRect(contour)
-        significant_changes.append((x, y, w, h))
+# Create masks to identify blue and orange pixels
+blue_pixels = cv2.inRange(roi, lower_blue, upper_blue)
+orange_pixels = cv2.inRange(roi, lower_orange, upper_orange)
 
-# Find the rightmost rectangle among the significant changes
-if significant_changes:
-    rightmost_rectangle = max(significant_changes, key=lambda rect: rect[0] + rect[2])
-    x, y, w, h = rightmost_rectangle
-    
-    # Draw the rightmost rectangle on the original image
-    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
+# Find the coordinates of blue and orange pixels
+blue_coords = np.column_stack(np.where(blue_pixels))
+orange_coords = np.column_stack(np.where(orange_pixels))
 
-# Display the original image with the rightmost significant change highlighted using a rectangle
+# Find the region where blue is below orange
+below_region = []
+for bx, by in blue_coords:
+    for ox, oy in orange_coords:
+        if bx > ox and by == oy:
+            below_region.append((bx, by))
+
+# If we found a region where blue is below orange
+if below_region:
+    below_region = np.array(below_region)
+    x_min, x_max = np.min(below_region[:, 0]), np.max(below_region[:, 0])
+    y_min, y_max = np.min(below_region[:, 1]), np.max(below_region[:, 1])
+
+    # Draw a rectangle on the original image to highlight the area
+    cv2.rectangle(image, (roi_x + y_min, x_min), (roi_x + y_max, x_max), (0, 0, 255), 2)
+
+# Display the original image with the highlighted area
 plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-plt.title('Rightmost Significant Change (Highlighted with a Rectangle)')
+plt.title('Highlight Area When Blue Line is Below Orange Line')
 plt.axis('off')
 plt.show()
